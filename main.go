@@ -285,9 +285,11 @@ Usage:
   salesmachine show   <id>
   salesmachine list
   salesmachine history <id>
+  salesmachine serve  [addr]                  (default addr: :8080, or $SALESMACHINE_ADDR)
 
 Env:
-  SALESMACHINE_DB   path to sqlite file (default: ./pipeline.db)`
+  SALESMACHINE_DB     path to sqlite file (default: ./pipeline.db)
+  SALESMACHINE_ADDR   default listen address for serve (default: :8080)`
 
 // Exit codes follow the standard convention: 0 ok, 1 runtime error, 2 usage.
 const (
@@ -317,6 +319,9 @@ func run(ctx context.Context, args []string, env getenv, stdout, stderr io.Write
 	defer func() { _ = s.Close() }()
 
 	cmd, rest := args[0], args[1:]
+	if cmd == "serve" && env("SALESMACHINE_ADDR") != "" && len(rest) == 0 {
+		rest = []string{env("SALESMACHINE_ADDR")}
+	}
 	if err := dispatch(ctx, s, cmd, rest, stdout); err != nil {
 		if err == errUsage {
 			fmt.Fprintln(stdout, usageText)
@@ -348,6 +353,8 @@ func dispatch(ctx context.Context, s *Store, cmd string, args []string, out io.W
 		return cmdList(ctx, s, args, out)
 	case "history":
 		return cmdHistory(ctx, s, args, out)
+	case "serve":
+		return cmdServe(ctx, s, args, "", out)
 	default:
 		return errUsage
 	}
